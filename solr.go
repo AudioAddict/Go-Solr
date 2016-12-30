@@ -14,6 +14,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"errors"
 )
 
 /*
@@ -478,6 +479,35 @@ func Init(host string, port int, core string) (*Connection, error) {
 func (c *Connection) Select(q *Query) (*SelectResponse, error) {
 	resp, err := c.CustomSelect(q, "select")
 	return resp, err
+}
+
+/*
+ * Performs RealtimeGet query and returns the document
+ */
+func (c *Connection) RealtimeGet(id string) (*Document, error) {
+	q := &Query{
+		Params: URLParamMap{
+			"id": []string{id},
+		},
+	}
+	body, err := HTTPGet(SolrSelectString(c, q.String(), "get"))
+
+	if err != nil {
+		return nil, err
+	}
+
+	j, err := BytesToJSON(&body)
+	if err != nil {
+		return nil, err
+	}
+
+	doc := (*j).(map[string]interface{})["doc"]
+
+	if doc == nil {
+		return nil, errors.New("Requested document was not found")
+	}
+
+	return &Document{doc.(map[string]interface{})}, nil
 }
 
 /*
